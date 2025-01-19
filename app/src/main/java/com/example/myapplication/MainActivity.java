@@ -1,5 +1,8 @@
 package com.example.myapplication;
 
+import static com.example.myapplication.Constants.PERMISSION_REQUEST_CODE;
+import static com.example.myapplication.Constants.REQUEST_CODE;
+
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -7,26 +10,27 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-public class MainActivity extends AppCompatActivity implements PickerAttachmentsListener {
-    private Button btnPickFile;
-    private TextView tvFilePath;
+import com.bumptech.glide.Glide;
 
-    private int REQUEST_CODE = 50;
-    private int PERMISSION_REQUEST_CODE = 100;
+public class MainActivity extends AppCompatActivity implements PickerAttachmentsListener {
+    private Button btnPickFile, btnLoadImage;
+    private TextView tvFilePath;
+    private ImageView imageView;
     private PickerAttachments pickerAttachments;
+    private Uri selectedFileUri; // Store the selected file URI for later use
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         pickerAttachments = new PickerAttachments(this);
-
         initViews();
         handleClicks();
     }
@@ -34,6 +38,8 @@ public class MainActivity extends AppCompatActivity implements PickerAttachments
     private void initViews() {
         btnPickFile = findViewById(R.id.btn_picked_file);
         tvFilePath = findViewById(R.id.text_Path);
+        imageView = findViewById(R.id.imageView);
+        btnLoadImage = findViewById(R.id.btn_load_image);
     }
 
     // Check if READ_EXTERNAL_STORAGE permission is granted (for older versions)
@@ -58,6 +64,15 @@ public class MainActivity extends AppCompatActivity implements PickerAttachments
                 requestStoragePermission();
             }
         });
+        btnLoadImage.setOnClickListener(v -> {
+            if (selectedFileUri != null) {
+                // Use Glide to load the image from the URI into the ImageView
+                loadImageIntoImageView(selectedFileUri);
+            } else {
+                tvFilePath.setText("No image selected.");
+            }
+        });
+
     }
 
     // Request READ_EXTERNAL_STORAGE permission
@@ -84,17 +99,9 @@ public class MainActivity extends AppCompatActivity implements PickerAttachments
     // Open file picker using SAF (for Android 10 and above)
     private void openFilePickerUsingSAF() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.setType("*/*");  // Open all file types
+        intent.setType(Constants.TYPE);  // Open all file types
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         Log.d("PICKER-TEST", "openFilePickerUsingSAF: ");
-//        String[] mimeTypes = {"application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .doc & .docx
-//                "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .ppt & .pptx
-//                "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xls & .xlsx
-//                "text/plain",
-//                "application/pdf",
-//                "application/zip", "application/vnd.android.package-archive"};
-//        intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
-
         startActivityForResult(intent, REQUEST_CODE);
     }
 
@@ -107,14 +114,20 @@ public class MainActivity extends AppCompatActivity implements PickerAttachments
             Uri uri = data.getData();
 
             if (uri != null) {
+                selectedFileUri = uri; // Store the selected file URI
                 // Get file type (extension)
                 String fileType = pickerAttachments.getFileType(uri, this);
+                String filePath = pickerAttachments.saveFileToAppFolder(MainActivity.this, uri);
+
+                Log.d("FIle-PATH", "FILE PATH IS = " + filePath);
+
 
                 // Handle the picked file by copying it to a temporary file
                 pickerAttachments.handlePickedFile(uri, fileType, this);
             }
         }
     }
+
 
     @Override
     public void onFilePicked(Uri uri, String filePath, String fileType) {
@@ -125,6 +138,13 @@ public class MainActivity extends AppCompatActivity implements PickerAttachments
     @Override
     public void onFileCopyError(String errorMessage) {
         tvFilePath.setText("Error: " + errorMessage);
+    }
+
+    private void loadImageIntoImageView(Uri uri) {
+        // Using Glide to load the image into the ImageView
+        Glide.with(this)
+                .load(uri) // Load image from URI
+                .into(imageView); // Set it into the ImageView
     }
 }
 

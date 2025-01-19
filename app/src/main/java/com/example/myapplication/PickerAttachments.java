@@ -1,9 +1,13 @@
 package com.example.myapplication;
 
+import static com.example.myapplication.Constants.BUFFER_SIZE;
+import static com.example.myapplication.Constants.SAVED_FILES_PREFIX;
+
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.provider.DocumentsProvider;
 import android.webkit.MimeTypeMap;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,9 +16,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 public class PickerAttachments {
-    private PickerAttachmentsListener listener;
+    private final PickerAttachmentsListener listener;
 
     // Constructor to initialize the listener
     public PickerAttachments(PickerAttachmentsListener listener) {
@@ -44,7 +49,7 @@ public class PickerAttachments {
     }
     public void copyInputStreamToFile(InputStream inputStream, File file) throws IOException {
         try (FileOutputStream outputStream = new FileOutputStream(file, false)) {
-            byte[] bytes = new byte[8192]; // Default buffer size
+            byte[] bytes = new byte[BUFFER_SIZE]; // Default buffer size
             int read;
             while ((read = inputStream.read(bytes)) != -1) {
                 outputStream.write(bytes, 0, read);
@@ -77,5 +82,46 @@ public class PickerAttachments {
                 listener.onFileCopyError("Failed to copy file: " + e.getMessage());
             }
         }
+    }
+    public String saveFileToAppFolder(Context context ,Uri uri) {
+        try {
+            // Get the content resolver
+            ContentResolver contentResolver = context.getContentResolver();
+
+            // Open input stream for the picked file
+            InputStream inputStream = contentResolver.openInputStream(uri);
+
+            if (inputStream != null) {
+                // Prepare output stream for the app's internal storage
+                File appFolder = new File(context.getFilesDir(), SAVED_FILES_PREFIX);
+                if (!appFolder.exists()) {
+                    appFolder.mkdir(); // Create directory if it doesn't exist
+                }
+
+                // Create a unique file name
+                String fileName = "picked_file_" + System.currentTimeMillis() +"."+ getFileType(uri,context); // You can choose file extension based on the file type
+                File outputFile = new File(appFolder, fileName);
+                OutputStream outputStream = new FileOutputStream(outputFile);
+
+                // Buffer to read and write the file data
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = inputStream.read(buffer)) > 0) {
+                    outputStream.write(buffer, 0, length);
+                }
+
+                // Close streams
+                inputStream.close();
+                outputStream.close();
+
+                // Return the saved file path
+                return outputFile.getAbsolutePath();
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null; // Return null if there was an error
     }
 }
