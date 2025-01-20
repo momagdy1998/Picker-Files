@@ -87,7 +87,6 @@ public class PickerAttachments {
         try {
             // Get the content resolver
             ContentResolver contentResolver = context.getContentResolver();
-
             // Open input stream for the picked file
             InputStream inputStream = contentResolver.openInputStream(uri);
 
@@ -117,7 +116,6 @@ public class PickerAttachments {
                 // Return the saved file path
                 return outputFile.getAbsolutePath();
             }
-
         } catch (IOException e) {
             e.printStackTrace();
         }
